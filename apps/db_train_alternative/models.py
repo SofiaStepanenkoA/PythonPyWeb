@@ -123,3 +123,22 @@ class Tag(models.Model):
 
     def __str__(self):
         return self.name
+
+class favourite_author(models.Model):
+    """
+    Таблица Избранных авторов, содержащая в себе
+    name - username автора
+    email - адрес электронной почты автора
+    """
+
+    name = models.CharField(max_length=200, verbose_name="Имя")
+    email = models.EmailField(unique=True, verbose_name="Почта")
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "Автор"
+        verbose_name_plural = "Авторы"
+
+
