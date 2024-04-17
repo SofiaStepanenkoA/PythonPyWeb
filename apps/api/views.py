@@ -9,6 +9,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import authentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 from django.http import Http404
@@ -16,7 +18,29 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.mixins import RetrieveModelMixin, ListModelMixin, CreateModelMixin, UpdateModelMixin, DestroyModelMixin
 from .serializers import AuthorModelSerializer
 from rest_framework import filters
+from rest_framework import permissions
 
+
+class CustomPermission(permissions.BasePermission):
+    """
+    Пользователи могут выполнять различные действия в зависимости от их роли.
+    """
+
+    def has_permission(self, request, view):
+        # Разрешаем только GET запросы для неаутентифицированных пользователей
+        if request.method == 'GET' and not request.user.is_authenticated:
+            return True
+
+        # Разрешаем GET и POST запросы для аутентифицированных пользователей
+        if request.method in ['GET', 'POST'] and request.user.is_authenticated:
+            return True
+
+        # Разрешаем все действия для администраторов
+        if request.user.is_superuser:
+            return True
+
+        # Во всех остальных случаях возвращаем False
+        return False
 
 class AuthorPagination(PageNumberPagination):
     page_size = 5  # количество объектов на странице
@@ -45,6 +69,7 @@ class AuthorAPIView(APIView):
     @csrf_exempt
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk=None):
         if pk is not None:
@@ -100,8 +125,13 @@ class AuthorAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+
 class AuthorGenericAPIView(GenericAPIView, RetrieveModelMixin, ListModelMixin, CreateModelMixin, UpdateModelMixin,
                            DestroyModelMixin):
+
+    # Переопределяем атрибут permission_classes для указания нашего собственного разрешения
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
     queryset = Author.objects.all()
     serializer_class = AuthorModelSerializer
 
@@ -126,3 +156,5 @@ class AuthorGenericAPIView(GenericAPIView, RetrieveModelMixin, ListModelMixin, C
 
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
+
+
